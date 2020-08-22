@@ -36,7 +36,7 @@ func main() {
     if err := markdown.Convert([]byte(source), &buf); err != nil {
         panic(err)
     }
-    fmt.Print(title)
+    fmt.Print(buf.String())
 }
 ```
 
