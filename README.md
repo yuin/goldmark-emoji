@@ -1,6 +1,11 @@
 goldmark-emoji
 =========================
 
+[![GoDev][godev-image]][godev-url]
+
+[godev-image]: https://pkg.go.dev/badge/github.com/yuin/goldmark-emoji
+[godev-url]: https://pkg.go.dev/github.com/yuin/goldmark-emoji
+
 goldmark-emoji is an extension for the [goldmark](http://github.com/yuin/goldmark) 
 that parses `:joy:` style emojis.
 
