@@ -24,11 +24,11 @@ import (
 )
 
 func main() {
-	markdown := goldmark.New(
-		goldmark.WithExtensions(
-			Emoji,
-		),
-	)
+    markdown := goldmark.New(
+        goldmark.WithExtensions(
+            Emoji,
+        ),
+    )
     source := `
     Joy :joy:
     `
