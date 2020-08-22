@@ -24,14 +24,15 @@ import (
     "bytes"
     "fmt"
 
-	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark-emoji/definition"
+    "github.com/yuin/goldmark"
+    "github.com/yuin/goldmark-emoji"
+    "github.com/yuin/goldmark-emoji/definition"
 )
 
 func main() {
     markdown := goldmark.New(
         goldmark.WithExtensions(
-            Emoji,
+            emoji.Emoji,
         ),
     )
     source := `
