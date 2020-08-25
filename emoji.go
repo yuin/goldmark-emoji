@@ -78,6 +78,9 @@ const (
 	// Entity renders an emoji as an html entity.
 	Entity RenderingMethod = iota
 
+	// Unicode renders an emoji as unicode character.
+	Unicode
+
 	// Twemoji renders an emoji as an img tag with [twemoji](https://github.com/twitter/twemoji).
 	Twemoji
 
@@ -243,12 +246,12 @@ func (s *emojiParser) Parse(parent ast.Node, block text.Reader, pc parser.Contex
 		return nil
 	}
 	block.Advance(i + 1)
-	name := line[1:i]
-	emoji, ok := s.Emojis.Get(util.BytesToReadOnlyString(name))
+	shortName := line[1:i]
+	emoji, ok := s.Emojis.Get(util.BytesToReadOnlyString(shortName))
 	if !ok {
 		return nil
 	}
-	return east.NewEmoji(emoji)
+	return east.NewEmoji(shortName, emoji)
 }
 
 type emojiHTMLRenderer struct {
@@ -284,6 +287,11 @@ func (r *emojiHTMLRenderer) renderEmoji(w util.BufWriter, source []byte, n ast.N
 		return ast.WalkContinue, nil
 	}
 	node := n.(*east.Emoji)
+	if !node.Value.IsUnicode() && r.Method != Func {
+		fmt.Fprintf(w, `<span title="%s">:%s:</span>`, util.EscapeHTML(util.StringToReadOnlyBytes(node.Value.Name)), node.ShortName)
+		return ast.WalkContinue, nil
+	}
+
 	switch r.Method {
 	case Entity:
 		for _, r := range node.Value.Unicode {
@@ -293,20 +301,18 @@ func (r *emojiHTMLRenderer) renderEmoji(w util.BufWriter, source []byte, n ast.N
 			}
 			fmt.Fprintf(w, "&#x%x;", r)
 		}
+	case Unicode:
+		fmt.Fprintf(w, "%s", string(node.Value.Unicode))
 	case Twemoji:
-		if !node.Value.IsUnicode() {
-			_, _ = w.WriteString("&#xfffd;")
-		} else {
-			s := slash
-			if !r.XHTML {
-				s = empty
-			}
-			values := []string{}
-			for _, r := range node.Value.Unicode {
-				values = append(values, fmt.Sprintf("%x", r))
-			}
-			fmt.Fprintf(w, r.TwemojiTemplate, node.Value.Name, strings.Join(values, "-"), s)
+		s := slash
+		if !r.XHTML {
+			s = empty
 		}
+		values := []string{}
+		for _, r := range node.Value.Unicode {
+			values = append(values, fmt.Sprintf("%x", r))
+		}
+		fmt.Fprintf(w, r.TwemojiTemplate, util.EscapeHTML(util.StringToReadOnlyBytes(node.Value.Name)), strings.Join(values, "-"), s)
 	case Func:
 		r.RendererFunc(w, source, node, &r.RendererConfig)
 	}

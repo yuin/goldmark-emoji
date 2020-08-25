@@ -179,4 +179,99 @@ func TestOptions(t *testing.T) {
 		<p><img class="emoji" alt="Fast parrot" src="https://cultofthepartyparrot.com/parrots/hd/fastparrot.gif></p>
 		`),
 	}, t)
+
+	markdown = goldmark.New(
+		goldmark.WithExtensions(
+			New(
+				WithRenderingMethod(Unicode),
+			),
+		),
+	)
+
+	count++
+	testutil.DoTestCase(markdown, testutil.MarkdownTestCase{
+		No:          count,
+		Description: "unicode",
+		Markdown: strings.TrimSpace(`
+		Lucky :joy:
+		`),
+		Expected: strings.TrimSpace(`
+		<p>Lucky 😂</p>
+		`),
+	}, t)
+
+	markdown = goldmark.New(
+		goldmark.WithExtensions(
+			New(
+				WithEmojis(
+					definition.NewEmojis(
+						definition.NewEmoji("Fast parrot", nil, "fastparrot"),
+					),
+				),
+				WithRenderingMethod(Twemoji),
+			),
+		),
+	)
+
+	count++
+	testutil.DoTestCase(markdown, testutil.MarkdownTestCase{
+		No:          count,
+		Description: "Non-unicode emoji in twemoji",
+		Markdown: strings.TrimSpace(`
+		:fastparrot:
+		`),
+		Expected: strings.TrimSpace(`
+		<p><span title="Fast parrot">:fastparrot:</span></p>
+		`),
+	}, t)
+
+	markdown = goldmark.New(
+		goldmark.WithExtensions(
+			New(
+				WithEmojis(
+					definition.NewEmojis(
+						definition.NewEmoji("Fast parrot", nil, "fastparrot"),
+					),
+				),
+				WithRenderingMethod(Entity),
+			),
+		),
+	)
+
+	count++
+	testutil.DoTestCase(markdown, testutil.MarkdownTestCase{
+		No:          count,
+		Description: "Non-unicode emoji in entity",
+		Markdown: strings.TrimSpace(`
+		:fastparrot:
+		`),
+		Expected: strings.TrimSpace(`
+		<p><span title="Fast parrot">:fastparrot:</span></p>
+		`),
+	}, t)
+
+	markdown = goldmark.New(
+		goldmark.WithExtensions(
+			New(
+				WithEmojis(
+					definition.NewEmojis(
+						definition.NewEmoji("Fast parrot", nil, "fastparrot"),
+					),
+				),
+				WithRenderingMethod(Unicode),
+			),
+		),
+	)
+
+	count++
+	testutil.DoTestCase(markdown, testutil.MarkdownTestCase{
+		No:          count,
+		Description: "Non-unicode emoji in unicode",
+		Markdown: strings.TrimSpace(`
+		:fastparrot:
+		`),
+		Expected: strings.TrimSpace(`
+		<p><span title="Fast parrot">:fastparrot:</span></p>
+		`),
+	}, t)
 }

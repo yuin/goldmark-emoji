@@ -2,6 +2,8 @@
 package ast
 
 import (
+	"fmt"
+
 	"github.com/yuin/goldmark-emoji/definition"
 	gast "github.com/yuin/goldmark/ast"
 )
@@ -10,12 +12,17 @@ import (
 type Emoji struct {
 	gast.BaseInline
 
-	Value *definition.Emoji
+	ShortName []byte
+	Value     *definition.Emoji
 }
 
 // Dump implements Node.Dump.
 func (n *Emoji) Dump(source []byte, level int) {
-	gast.DumpHelper(n, source, level, nil, nil)
+	m := map[string]string{
+		"ShortName": string(n.ShortName),
+		"Value":     fmt.Sprintf("%#v", n.Value),
+	}
+	gast.DumpHelper(n, source, level, m, nil)
 }
 
 // KindEmoji is a NodeKind of the emoji node.
@@ -27,8 +34,9 @@ func (n *Emoji) Kind() gast.NodeKind {
 }
 
 // NewEmoji returns a new Emoji node.
-func NewEmoji(value *definition.Emoji) *Emoji {
+func NewEmoji(shortName []byte, value *definition.Emoji) *Emoji {
 	return &Emoji{
-		Value: value,
+		ShortName: shortName,
+		Value:     value,
 	}
 }
