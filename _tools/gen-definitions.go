@@ -90,7 +90,7 @@ func genGithub() {
 		var names []string
 		for _, n := range getShortNames(emoji) {
 			if _, ok := ghNames[n]; len(n) > 0 && ok {
-				names = append(names, n)
+				names = append(names, fmt.Sprintf(`"%s"`, n))
 			}
 		}
 		if len(names) == 0 {
@@ -99,9 +99,7 @@ func genGithub() {
 
 		desc := getDescription(emoji)
 		uc := []rune(getUnicode(emoji))
-		for _, name := range names {
-			buf = append(buf, fmt.Sprintf(`NewEmoji("%s", %#v, "%s")`, desc, uc, name))
-		}
+		buf = append(buf, fmt.Sprintf(`NewEmoji("%s", %#v, %s)`, desc, uc, strings.Join(names, ", ")))
 	}
 
 	f, err := os.Create(outPath)
