@@ -64,8 +64,8 @@ func genGithub() {
 	outPath := outBaseDir + "github.go"
 
 	bs := getURL("https://api.github.com/emojis")
-	var ghnames map[string]string
-	abortIfError(json.Unmarshal(bs, &ghnames))
+	var ghNames map[string]string
+	abortIfError(json.Unmarshal(bs, &ghNames))
 
 	bs = getURL("https://raw.githubusercontent.com/github/gemoji/master/db/emoji.json")
 	var list []map[string]interface{}
@@ -87,20 +87,21 @@ func genGithub() {
 
 	buf := []string{}
 	for _, emoji := range list {
-		names := getShortNames(emoji)
-		name := ""
-		for _, n := range names {
-			if _, ok := ghnames[n]; ok {
-				name = n
-				break
+		var names []string
+		for _, n := range getShortNames(emoji) {
+			if _, ok := ghNames[n]; len(n) > 0 && ok {
+				names = append(names, n)
 			}
 		}
-		if len(name) == 0 {
+		if len(names) == 0 {
 			continue
 		}
-		desc := getDescription(emoji)
 
-		buf = append(buf, fmt.Sprintf(`NewEmoji("%s", %#v, "%s")`, desc, []rune(getUnicode(emoji)), name))
+		desc := getDescription(emoji)
+		uc := []rune(getUnicode(emoji))
+		for _, name := range names {
+			buf = append(buf, fmt.Sprintf(`NewEmoji("%s", %#v, "%s")`, desc, uc, name))
+		}
 	}
 
 	f, err := os.Create(outPath)
