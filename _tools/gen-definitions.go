@@ -20,7 +20,7 @@ var %[1]sOnce sync.Once
 func %[2]s(opts ...EmojisOption) Emojis {
 	%[1]sOnce.Do(func() {
 		%[1]s = NewEmojis(
-			 %[3]s,
+			%[3]s,
         )
 	})
 	m := %[1]s.Clone()
