@@ -99,7 +99,7 @@ func genGithub() {
 
 		desc := getDescription(emoji)
 		uc := []rune(getUnicode(emoji))
-		buf = append(buf, fmt.Sprintf(`NewEmoji("%s", %#v, %s)`, desc, uc, strings.Join(names, ", ")))
+		buf = append(buf, fmt.Sprintf(`Emoji{Name: "%s", Unicode: %#v, ShortNames: []string{%s}}`, desc, uc, strings.Join(names, ", ")))
 	}
 
 	f, err := os.Create(outPath)
