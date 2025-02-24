@@ -49,7 +49,7 @@ func TestOptions(t *testing.T) {
 		Lucky :joy:
 		`),
 		Expected: strings.TrimSpace(`
-		<p>Lucky <img class="emoji" draggable="false" alt="face with tears of joy" src="https://twemoji.maxcdn.com/v/latest/72x72/1f602.png"></p>
+		<p>Lucky <img class="emoji" draggable="false" alt="face with tears of joy" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/72x72/1f602.png"></p>
 		`),
 	}, t)
 
@@ -72,7 +72,7 @@ func TestOptions(t *testing.T) {
 		Lucky :joy:
 		`),
 		Expected: strings.TrimSpace(`
-		<p>Lucky <img class="emoji" draggable="false" alt="face with tears of joy" src="https://twemoji.maxcdn.com/v/latest/72x72/1f602.png" /></p>
+		<p>Lucky <img class="emoji" draggable="false" alt="face with tears of joy" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/72x72/1f602.png" /></p>
 		`),
 	}, t)
 
@@ -80,7 +80,7 @@ func TestOptions(t *testing.T) {
 		goldmark.WithExtensions(
 			New(
 				WithRenderingMethod(Twemoji),
-				WithTwemojiTemplate(`<img class="myclass" draggable="false" alt="%[1]s" src="https://twemoji.maxcdn.com/v/latest/36x36/%[2]s.png"%[3]s>`),
+				WithTwemojiTemplate(`<img class="myclass" draggable="false" alt="%[1]s" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/36x36/%[2]s.png"%[3]s>`),
 			),
 		),
 	)
@@ -93,7 +93,7 @@ func TestOptions(t *testing.T) {
 		Lucky :joy:
 		`),
 		Expected: strings.TrimSpace(`
-        <p>Lucky <img class="myclass" draggable="false" alt="face with tears of joy" src="https://twemoji.maxcdn.com/v/latest/36x36/1f602.png"></p>
+        <p>Lucky <img class="myclass" draggable="false" alt="face with tears of joy" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/36x36/1f602.png"></p>
 		`),
 	}, t)
 
