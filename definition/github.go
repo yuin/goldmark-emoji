@@ -16,7 +16,7 @@ func Github(opts ...EmojisOption) Emojis {
 		cName := 0
 		cUnicode := 0
 		cShortNames := 0
-		for i := 0; i < _githubLength; i++ {
+		for i := range _githubLength {
 			tName := cName + int(_githubNameIndex[i])
 			tUnicode := cUnicode + int(_githubUnicodeIndex[i])
 			tShortNames := cShortNames + int(_githubShortNamesIndex[i])

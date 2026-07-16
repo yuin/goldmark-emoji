@@ -3,68 +3,82 @@ goldmark-emoji
 
 [![GoDev][godev-image]][godev-url]
 
-[godev-image]: https://pkg.go.dev/badge/github.com/yuin/goldmark-emoji
-[godev-url]: https://pkg.go.dev/github.com/yuin/goldmark-emoji
+[godev-image]: https://pkg.go.dev/badge/github.com/yuin/goldmark-emoji/v2
+[godev-url]: https://pkg.go.dev/github.com/yuin/goldmark-emoji/v2
 
-goldmark-emoji is an extension for the [goldmark](http://github.com/yuin/goldmark)
+goldmark-emoji is an extension for [goldmark](http://github.com/yuin/goldmark) v2
 that parses `:joy:` style emojis.
 
-Installation
---------------------
+## Compatiblity
+github.com/yuin/goldmark-emoji/v2 is compatible with goldmark(v2).
+
+use `github.com/yuin/goldmark-meta` for goldmark(v1).
+
+## Installation
 
 ```sh
-go get github.com/yuin/goldmark-emoji
+go get github.com/yuin/goldmark-emoji/v2
 ```
 
-Usage
---------------------
+## Usage
 
 ```go
 import (
     "bytes"
     "fmt"
 
-    "github.com/yuin/goldmark"
-    "github.com/yuin/goldmark-emoji"
-    "github.com/yuin/goldmark-emoji/definition"
+    "github.com/yuin/goldmark-emoji/v2"
+    "github.com/yuin/goldmark/v2/parser"
+    "github.com/yuin/goldmark/v2/renderer/html"
 )
 
 func main() {
-    markdown := goldmark.New(
-        goldmark.WithExtensions(
-            emoji.Emoji,
-        ),
-    )
-    source := `
-    Joy :joy:
-    `
+    p := parser.New(parser.WithExtensions(emoji.Parser))
+    r := html.New(html.WithExtensions(emoji.HTMLRenderer))
+    source := []byte(`Joy :joy:`)
+    doc := p.Parse(source)
     var buf bytes.Buffer
-    if err := markdown.Convert([]byte(source), &buf); err != nil {
+    if err := r.Render(&buf, source, doc); err != nil {
         panic(err)
     }
     fmt.Print(buf.String())
 }
 ```
 
+With options:
+
+```go
+p := parser.New(parser.WithExtensions(
+    emoji.NewParser(emoji.WithEmojis(myEmojis)),
+))
+r := html.New(html.WithExtensions(
+    emoji.NewHTMLRenderer(emoji.WithRenderingMethod(emoji.Twemoji)),
+))
+```
+
 See `emoji_test.go` for detailed usage.
 
 ### Options
 
-Options for the extension
+goldmark/v2 separates parser and renderer extensions, so options are split accordingly.
+
+**Parser options** (passed to `NewParser`):
 
 | Option | Description |
 | ------ | ----------- |
-| `WithEmojis` | Definition of emojis. This defaults to github emoji set |
-| `WithRenderingMethod` | `Entity` : renders as HTML entities, `Twemoji` : renders as an img tag that uses [twemoji](https://github.com/twitter/twemoji), `Func` : renders using a go function |
-| `WithTwemojiTemplate` | Twemoji img tag printf template |
-| `WithRendererFunc` | renders by a go function |
+| `WithEmojis` | Emoji definitions. Defaults to the GitHub emoji set |
 
-License
---------------------
+**Renderer options** (passed to `NewHTMLRenderer`):
 
+| Option | Description |
+| ------ | ----------- |
+| `WithRenderingMethod` | `Entity` (default): HTML entities, `Unicode`: raw Unicode characters, `Twemoji`: `<img>` tag using [twemoji](https://github.com/twitter/twemoji), `Func`: custom Go function |
+| `WithTwemojiTemplate` | printf template for the twemoji `<img>` tag |
+| `WithRendererFunc` | Custom rendering function (used when method is `Func`) |
+
+## License
 MIT
 
-Author
---------------------
+## Author
 
 Yusuke Inuzuka

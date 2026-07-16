@@ -1,24 +1,34 @@
-package emoji
+package emoji_test
 
 import (
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 
-	"github.com/yuin/goldmark"
-	east "github.com/yuin/goldmark-emoji/ast"
-	"github.com/yuin/goldmark-emoji/definition"
-	"github.com/yuin/goldmark/renderer/html"
-	"github.com/yuin/goldmark/testutil"
-	"github.com/yuin/goldmark/util"
+	. "github.com/yuin/goldmark-emoji/v2"
+	"github.com/yuin/goldmark-emoji/v2/definition"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer/html"
+	"github.com/yuin/goldmark/v2/testutil"
+	"github.com/yuin/goldmark/v2/util"
 )
 
+func newMarkdown(parserOpts []ParserOption, rendererOpts []HTMLRendererOption) testutil.MarkdownToStringFunc {
+	p := parser.New(parser.WithExtensions(NewParser(parserOpts...)))
+	r := html.New(html.WithExtensions(NewHTMLRenderer(rendererOpts...)))
+	return testutil.NewMarkdownToStringFunc(p, r)
+}
+
+func newMarkdownWithHTMLOpts(parserOpts []ParserOption, rendererOpts []HTMLRendererOption, htmlOpts ...html.Option) testutil.MarkdownToStringFunc {
+	p := parser.New(parser.WithExtensions(NewParser(parserOpts...)))
+	allHTMLOpts := append([]html.Option{html.WithExtensions(NewHTMLRenderer(rendererOpts...))}, htmlOpts...)
+	r := html.New(allHTMLOpts...)
+	return testutil.NewMarkdownToStringFunc(p, r)
+}
+
 func TestOptions(t *testing.T) {
-	markdown := goldmark.New(
-		goldmark.WithExtensions(
-			Emoji,
-		),
-	)
+	markdown := newMarkdown(nil, nil)
 	count := 0
 
 	count++
@@ -33,13 +43,7 @@ func TestOptions(t *testing.T) {
 		`),
 	}, t)
 
-	markdown = goldmark.New(
-		goldmark.WithExtensions(
-			New(
-				WithRenderingMethod(Twemoji),
-			),
-		),
-	)
+	markdown = newMarkdown(nil, []HTMLRendererOption{WithRenderingMethod(Twemoji)})
 
 	count++
 	testutil.DoTestCase(markdown, testutil.MarkdownTestCase{
@@ -53,15 +57,9 @@ func TestOptions(t *testing.T) {
 		`),
 	}, t)
 
-	markdown = goldmark.New(
-		goldmark.WithExtensions(
-			New(
-				WithRenderingMethod(Twemoji),
-			),
-		),
-		goldmark.WithRendererOptions(
-			html.WithXHTML(),
-		),
+	markdown = newMarkdownWithHTMLOpts(
+		nil, []HTMLRendererOption{WithRenderingMethod(Twemoji)},
+		html.WithXHTML(),
 	)
 
 	count++
@@ -76,14 +74,10 @@ func TestOptions(t *testing.T) {
 		`),
 	}, t)
 
-	markdown = goldmark.New(
-		goldmark.WithExtensions(
-			New(
-				WithRenderingMethod(Twemoji),
-				WithTwemojiTemplate(`<img class="myclass" draggable="false" alt="%[1]s" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/36x36/%[2]s.png"%[3]s>`),
-			),
-		),
-	)
+	markdown = newMarkdown(nil, []HTMLRendererOption{
+		WithRenderingMethod(Twemoji),
+		WithTwemojiTemplate(`<img class="myclass" draggable="false" alt="%[1]s" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/36x36/%[2]s.png"%[3]s>`),
+	})
 
 	count++
 	testutil.DoTestCase(markdown, testutil.MarkdownTestCase{
@@ -97,17 +91,13 @@ func TestOptions(t *testing.T) {
 		`),
 	}, t)
 
-	markdown = goldmark.New(
-		goldmark.WithExtensions(
-			New(
-				WithEmojis(definition.NewEmojis(definition.NewEmoji(
-					"Standing man",
-					[]rune{0x1f9cd, 0x200d, 0x2642, 0xfe0f},
-					"man_standing",
-				))),
-			),
-		),
-	)
+	markdown = newMarkdown([]ParserOption{
+		WithEmojis(definition.NewEmojis(definition.NewEmoji(
+			"Standing man",
+			[]rune{0x1f9cd, 0x200d, 0x2642, 0xfe0f},
+			"man_standing",
+		))),
+	}, nil)
 
 	count++
 	testutil.DoTestCase(markdown, testutil.MarkdownTestCase{
@@ -121,23 +111,19 @@ func TestOptions(t *testing.T) {
 		`),
 	}, t)
 
-	markdown = goldmark.New(
-		goldmark.WithExtensions(
-			New(
-				WithEmojis(
-					definition.Github(
-						definition.WithEmojis(
-							definition.NewEmoji(
-								"Standing man",
-								[]rune{0x1f9cd, 0x200d, 0x2642, 0xfe0f},
-								"man_standing",
-							),
-						),
+	markdown = newMarkdown([]ParserOption{
+		WithEmojis(
+			definition.Github(
+				definition.WithEmojis(
+					definition.NewEmoji(
+						"Standing man",
+						[]rune{0x1f9cd, 0x200d, 0x2642, 0xfe0f},
+						"man_standing",
 					),
 				),
 			),
 		),
-	)
+	}, nil)
 
 	count++
 	testutil.DoTestCase(markdown, testutil.MarkdownTestCase{
@@ -151,21 +137,21 @@ func TestOptions(t *testing.T) {
 		`),
 	}, t)
 
-	markdown = goldmark.New(
-		goldmark.WithExtensions(
-			New(
-				WithEmojis(
-					definition.NewEmojis(
-						definition.NewEmoji("Fast parrot", nil, "fastparrot"),
-					),
+	markdown = newMarkdown(
+		[]ParserOption{
+			WithEmojis(
+				definition.NewEmojis(
+					definition.NewEmoji("Fast parrot", nil, "fastparrot"),
 				),
-				WithRenderingMethod(Func),
-				WithRendererFunc(func(w util.BufWriter, source []byte, n *east.Emoji, config *RendererConfig) {
-
-					fmt.Fprintf(w, `<img class="emoji" alt="%s" src="https://cultofthepartyparrot.com/parrots/hd/%s.gif>`, n.Value.Name, n.Value.ShortNames[0])
-				}),
 			),
-		),
+		},
+		[]HTMLRendererOption{
+			WithRenderingMethod(Func),
+			WithRendererFunc(func(w io.Writer, source []byte, n *Emoji, config *HTMLRendererConfig) {
+				bw := w.(util.BufWriter)
+				_, _ = fmt.Fprintf(bw, `<img class="emoji" alt="%s" src="https://cultofthepartyparrot.com/parrots/hd/%s.gif>`, n.Value.Name, n.Value.ShortNames[0])
+			}),
+		},
 	)
 
 	count++
@@ -180,13 +166,7 @@ func TestOptions(t *testing.T) {
 		`),
 	}, t)
 
-	markdown = goldmark.New(
-		goldmark.WithExtensions(
-			New(
-				WithRenderingMethod(Unicode),
-			),
-		),
-	)
+	markdown = newMarkdown(nil, []HTMLRendererOption{WithRenderingMethod(Unicode)})
 
 	count++
 	testutil.DoTestCase(markdown, testutil.MarkdownTestCase{
@@ -200,17 +180,9 @@ func TestOptions(t *testing.T) {
 		`),
 	}, t)
 
-	markdown = goldmark.New(
-		goldmark.WithExtensions(
-			New(
-				WithEmojis(
-					definition.NewEmojis(
-						definition.NewEmoji("Fast parrot", nil, "fastparrot"),
-					),
-				),
-				WithRenderingMethod(Twemoji),
-			),
-		),
+	markdown = newMarkdown(
+		[]ParserOption{WithEmojis(definition.NewEmojis(definition.NewEmoji("Fast parrot", nil, "fastparrot")))},
+		[]HTMLRendererOption{WithRenderingMethod(Twemoji)},
 	)
 
 	count++
@@ -225,17 +197,9 @@ func TestOptions(t *testing.T) {
 		`),
 	}, t)
 
-	markdown = goldmark.New(
-		goldmark.WithExtensions(
-			New(
-				WithEmojis(
-					definition.NewEmojis(
-						definition.NewEmoji("Fast parrot", nil, "fastparrot"),
-					),
-				),
-				WithRenderingMethod(Entity),
-			),
-		),
+	markdown = newMarkdown(
+		[]ParserOption{WithEmojis(definition.NewEmojis(definition.NewEmoji("Fast parrot", nil, "fastparrot")))},
+		[]HTMLRendererOption{WithRenderingMethod(Entity)},
 	)
 
 	count++
@@ -250,17 +214,9 @@ func TestOptions(t *testing.T) {
 		`),
 	}, t)
 
-	markdown = goldmark.New(
-		goldmark.WithExtensions(
-			New(
-				WithEmojis(
-					definition.NewEmojis(
-						definition.NewEmoji("Fast parrot", nil, "fastparrot"),
-					),
-				),
-				WithRenderingMethod(Unicode),
-			),
-		),
+	markdown = newMarkdown(
+		[]ParserOption{WithEmojis(definition.NewEmojis(definition.NewEmoji("Fast parrot", nil, "fastparrot")))},
+		[]HTMLRendererOption{WithRenderingMethod(Unicode)},
 	)
 
 	count++

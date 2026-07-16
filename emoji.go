@@ -3,76 +3,57 @@ package emoji
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
-	"github.com/yuin/goldmark"
-	east "github.com/yuin/goldmark-emoji/ast"
-	"github.com/yuin/goldmark-emoji/definition"
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/renderer"
-	"github.com/yuin/goldmark/renderer/html"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark-emoji/v2/definition"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer"
+	"github.com/yuin/goldmark/v2/renderer/html"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
-// Option interface sets options for this extension.
-type Option interface {
-	emojiOption()
+// Emoji represents an inline emoji.
+type Emoji struct {
+	ast.BaseInline
+
+	shortName string
+	Value     *definition.Emoji
 }
 
-// ParserConfig struct is a data structure that holds configuration of
-// the Emoji extension.
-type ParserConfig struct {
-	Emojis definition.Emojis
+// Dump implements Node.Dump.
+func (n *Emoji) Dump(_ []byte) *ast.NodeDump {
+	return ast.NewNodeDump(n, map[string]any{
+		"ShortName": n.shortName,
+		"Value":     fmt.Sprintf("%#v", n.Value),
+	})
 }
 
-const optEmojis parser.OptionName = "EmojiEmojis"
+// KindEmoji is a NodeKind of the emoji node.
+var KindEmoji = ast.NewNodeKind("Emoji")
 
-// SetOption implements parser.SetOptioner
-func (c *ParserConfig) SetOption(name parser.OptionName, value interface{}) {
-	switch name {
-	case optEmojis:
-		c.Emojis = value.(definition.Emojis)
+// Kind implements Node.Kind.
+func (n *Emoji) Kind() ast.NodeKind {
+	return KindEmoji
+}
+
+// NewEmoji returns a new Emoji node.
+func NewEmoji(shortName string, value *definition.Emoji) *Emoji {
+	n := &Emoji{
+		shortName: shortName,
+		Value:     value,
 	}
-}
-
-// A ParserOption interface sets options for the emoji parser.
-type ParserOption interface {
-	Option
-	parser.Option
-
-	SetEmojiOption(*ParserConfig)
-}
-
-var _ ParserOption = &withEmojis{}
-
-type withEmojis struct {
-	value definition.Emojis
-}
-
-func (o *withEmojis) emojiOption() {}
-
-func (o *withEmojis) SetParserOption(c *parser.Config) {
-	c.Options[optEmojis] = o.value
-}
-
-func (o *withEmojis) SetEmojiOption(c *ParserConfig) {
-	c.Emojis = o.value
-}
-
-// WithMaping is a functional option that defines links names to unicode emojis.
-func WithEmojis(value definition.Emojis) Option {
-	return &withEmojis{
-		value: value,
-	}
+	n.Init(n)
+	return n
 }
 
 // RenderingMethod indicates how emojis are rendered.
 type RenderingMethod int
 
 // RendererFunc will be used for rendering emojis.
-type RendererFunc func(w util.BufWriter, source []byte, n *east.Emoji, config *RendererConfig)
+type RendererFunc func(w io.Writer, source []byte, n *Emoji, config *HTMLRendererConfig)
 
 const (
 	// Entity renders an emoji as an html entity.
@@ -88,12 +69,13 @@ const (
 	Func
 )
 
-// RendererConfig struct holds options for the emoji renderer.
-type RendererConfig struct {
-	html.Config
-
+// HTMLRendererConfig struct holds options for the emoji renderer.
+type HTMLRendererConfig struct {
 	// Method indicates how emojis are rendered.
 	Method RenderingMethod
+
+	// XHTML indicates whether to render in XHTML style.
+	XHTML bool
 
 	// TwemojiTemplate is a printf template for twemoji. This value is valid only when Method is set to Twemoji.
 	// `printf` arguments are:
@@ -111,110 +93,92 @@ type RendererConfig struct {
 // DefaultTwemojiTemplate is a default value for RendererConfig.TwemojiTemplate.
 const DefaultTwemojiTemplate = `<img class="emoji" draggable="false" alt="%[1]s" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/72x72/%[2]s.png"%[3]s>`
 
-// SetOption implements renderer.SetOptioner.
-func (c *RendererConfig) SetOption(name renderer.OptionName, value interface{}) {
-	switch name {
-	case optRenderingMethod:
-		c.Method = value.(RenderingMethod)
-	case optTwemojiTemplate:
-		c.TwemojiTemplate = value.(string)
-	case optRendererFunc:
-		c.RendererFunc = value.(RendererFunc)
-	default:
-		c.Config.SetOption(name, value)
-	}
+// A HTMLRendererOption interface sets options for the emoji renderer.
+type HTMLRendererOption interface {
+	setEmojiOption(*HTMLRendererConfig)
 }
 
-// A RendererOption interface sets options for the emoji renderer.
-type RendererOption interface {
-	Option
-	renderer.Option
-
-	SetEmojiOption(*RendererConfig)
-}
-
-var _ RendererOption = &withRenderingMethod{}
+var _ HTMLRendererOption = &withRenderingMethod{}
 
 type withRenderingMethod struct {
 	value RenderingMethod
 }
 
-func (o *withRenderingMethod) emojiOption() {
-}
-
-// SetConfig implements renderer.Option#SetConfig.
-func (o *withRenderingMethod) SetConfig(c *renderer.Config) {
-	c.Options[optRenderingMethod] = o.value
-}
-
-// SetEmojiOption implements RendererOption#SetEmojiOption
-func (o *withRenderingMethod) SetEmojiOption(c *RendererConfig) {
+// setEmojiOption implements RendererOption#setEmojiOption
+func (o *withRenderingMethod) setEmojiOption(c *HTMLRendererConfig) {
 	c.Method = o.value
 }
 
-const optRenderingMethod renderer.OptionName = "EmojiRenderingMethod"
-
 // WithRenderingMethod is a functional option that indicates how emojis are rendered.
-func WithRenderingMethod(a RenderingMethod) Option {
+func WithRenderingMethod(a RenderingMethod) HTMLRendererOption {
 	return &withRenderingMethod{a}
 }
+
+var _ HTMLRendererOption = &withTwemojiTemplate{}
 
 type withTwemojiTemplate struct {
 	value string
 }
 
-func (o *withTwemojiTemplate) emojiOption() {
-}
-
-// SetConfig implements renderer.Option#SetConfig.
-func (o *withTwemojiTemplate) SetConfig(c *renderer.Config) {
-	c.Options[optTwemojiTemplate] = o.value
-}
-
-// SetEmojiOption implements RendererOption#SetEmojiOption
-func (o *withTwemojiTemplate) SetEmojiOption(c *RendererConfig) {
+// setEmojiOption implements RendererOption#setEmojiOption
+func (o *withTwemojiTemplate) setEmojiOption(c *HTMLRendererConfig) {
 	c.TwemojiTemplate = o.value
 }
 
-const optTwemojiTemplate renderer.OptionName = "EmojiTwemojiTemplate"
-
 // WithTwemojiTemplate is a functional option that changes a twemoji img tag.
-func WithTwemojiTemplate(s string) Option {
+func WithTwemojiTemplate(s string) HTMLRendererOption {
 	return &withTwemojiTemplate{s}
 }
 
-var _ RendererOption = &withRendererFunc{}
+var _ HTMLRendererOption = &withRendererFunc{}
 
 type withRendererFunc struct {
 	value RendererFunc
 }
 
-func (o *withRendererFunc) emojiOption() {
-}
-
-// SetConfig implements renderer.Option#SetConfig.
-func (o *withRendererFunc) SetConfig(c *renderer.Config) {
-	c.Options[optRendererFunc] = o.value
-}
-
-// SetEmojiOption implements RendererOption#SetEmojiOption
-func (o *withRendererFunc) SetEmojiOption(c *RendererConfig) {
+// setEmojiOption implements RendererOption#setEmojiOption
+func (o *withRendererFunc) setEmojiOption(c *HTMLRendererConfig) {
 	c.RendererFunc = o.value
 }
 
-const optRendererFunc renderer.OptionName = "EmojiRendererFunc"
-
 // WithRendererFunc is a functional option that changes a renderer func.
-func WithRendererFunc(f RendererFunc) Option {
+func WithRendererFunc(f RendererFunc) HTMLRendererOption {
 	return &withRendererFunc{f}
+}
+
+// ParserConfig struct is a data structure that holds configuration of
+// the Emoji extension.
+type ParserConfig struct {
+	Emojis definition.Emojis
+}
+
+// A ParserOption interface sets options for the emoji parser.
+type ParserOption interface {
+	SetEmojiOption(*ParserConfig)
+}
+
+var _ ParserOption = &withEmojis{}
+
+type withEmojis struct {
+	value definition.Emojis
+}
+
+func (o *withEmojis) SetEmojiOption(c *ParserConfig) {
+	c.Emojis = o.value
+}
+
+// WithEmojis is a functional option that defines links names to unicode emojis.
+func WithEmojis(value definition.Emojis) ParserOption {
+	return &withEmojis{
+		value: value,
+	}
 }
 
 type emojiParser struct {
 	ParserConfig
 }
 
-// NewParser returns a new parser.InlineParser that can parse emoji expressions.
-func NewParser(opts ...ParserOption) parser.InlineParser {
+func newInlineParser(opts ...ParserOption) parser.InlineParser {
 	p := &emojiParser{
 		ParserConfig: ParserConfig{
 			Emojis: definition.Github(),
@@ -238,7 +202,7 @@ func (s *emojiParser) Parse(parent ast.Node, block text.Reader, pc parser.Contex
 	i := 1
 	for ; i < len(line); i++ {
 		c := line[i]
-		if !(util.IsAlphaNumeric(c) || c == '_' || c == '-' || c == '+') {
+		if !util.IsAlphaNumeric(c) && c != '_' && c != '-' && c != '+' {
 			break
 		}
 	}
@@ -246,115 +210,104 @@ func (s *emojiParser) Parse(parent ast.Node, block text.Reader, pc parser.Contex
 		return nil
 	}
 	block.Advance(i + 1)
-	shortName := line[1:i]
-	emoji, ok := s.Emojis.Get(util.BytesToReadOnlyString(shortName))
+	shortName := util.BytesToReadOnlyString(line[1:i])
+	emoji, ok := s.Emojis.Get(shortName)
 	if !ok {
 		return nil
 	}
-	return east.NewEmoji(shortName, emoji)
+	return NewEmoji(shortName, emoji)
 }
 
 type emojiHTMLRenderer struct {
-	RendererConfig
+	HTMLRendererConfig
 }
 
 // NewHTMLRenderer returns a new HTMLRenderer.
-func NewHTMLRenderer(opts ...RendererOption) renderer.NodeRenderer {
+func NewHTMLRenderer(opts ...HTMLRendererOption) html.Extension {
 	r := &emojiHTMLRenderer{
-		RendererConfig: RendererConfig{
-			Config:          html.NewConfig(),
+		HTMLRendererConfig: HTMLRendererConfig{
 			Method:          Entity,
 			TwemojiTemplate: DefaultTwemojiTemplate,
 			RendererFunc:    nil,
 		},
 	}
 	for _, opt := range opts {
-		opt.SetEmojiOption(&r.RendererConfig)
+		opt.setEmojiOption(&r.HTMLRendererConfig)
 	}
 	return r
 }
 
-// RegisterFuncs implements renderer.NodeRenderer.RegisterFuncs.
-func (r *emojiHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	reg.Register(east.KindEmoji, r.renderEmoji)
+// RendererOptions implements html.Extension.
+func (r *emojiHTMLRenderer) RendererOptions(cfg *html.Config) []html.Option {
+	r.XHTML = cfg.XHTML
+	return []html.Option{
+		html.WithNodeRenderers(map[ast.NodeKind]html.NodeRenderer{
+			KindEmoji: html.NodeRendererFunc(r.renderEmoji),
+		}),
+	}
 }
 
 const slash = " /"
 const empty = ""
 
-func (r *emojiHTMLRenderer) renderEmoji(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *emojiHTMLRenderer) renderEmoji(w io.Writer, source []byte, n ast.Node, entering bool, rc renderer.Context) (ast.WalkStatus, error) {
 	if !entering {
 		return ast.WalkContinue, nil
 	}
-	node := n.(*east.Emoji)
+	bw := w.(util.BufWriter)
+	node := n.(*Emoji)
 	if !node.Value.IsUnicode() && r.Method != Func {
-		fmt.Fprintf(w, `<span title="%s">:%s:</span>`, util.EscapeHTML(util.StringToReadOnlyBytes(node.Value.Name)), node.ShortName)
+		_, _ = fmt.Fprintf(bw, `<span title="%s">:%s:</span>`, util.EscapeHTML(util.StringToReadOnlyBytes(node.Value.Name)), node.shortName)
 		return ast.WalkContinue, nil
 	}
 
 	switch r.Method {
 	case Entity:
-		for _, r := range node.Value.Unicode {
-			if r == 0x200D {
-				_, _ = w.WriteString("&zwj;")
+		for _, ru := range node.Value.Unicode {
+			if ru == 0x200D {
+				_, _ = bw.WriteString("&zwj;")
 				continue
 			}
-			fmt.Fprintf(w, "&#x%x;", r)
+			_, _ = fmt.Fprintf(bw, "&#x%x;", ru)
 		}
 	case Unicode:
-		fmt.Fprintf(w, "%s", string(node.Value.Unicode))
+		_, _ = fmt.Fprintf(bw, "%s", string(node.Value.Unicode))
 	case Twemoji:
 		s := slash
 		if !r.XHTML {
 			s = empty
 		}
 		values := []string{}
-		for _, r := range node.Value.Unicode {
-			values = append(values, fmt.Sprintf("%x", r))
+		for _, ru := range node.Value.Unicode {
+			values = append(values, fmt.Sprintf("%x", ru))
 		}
-		fmt.Fprintf(w, r.TwemojiTemplate, util.EscapeHTML(util.StringToReadOnlyBytes(node.Value.Name)), strings.Join(values, "-"), s)
+		_, _ = fmt.Fprintf(bw, r.TwemojiTemplate, util.EscapeHTML(util.StringToReadOnlyBytes(node.Value.Name)), strings.Join(values, "-"), s)
 	case Func:
-		r.RendererFunc(w, source, node, &r.RendererConfig)
+		r.RendererFunc(w, source, node, &r.HTMLRendererConfig)
 	}
 	return ast.WalkContinue, nil
 }
 
-type emoji struct {
-	options []Option
+type parserExtension struct {
+	parserOpts []ParserOption
 }
 
-// Emoji is a goldmark.Extender implementation.
-var Emoji = &emoji{
-	options: []Option{},
+// NewParser returns a new parser.Extension for emojis.
+func NewParser(opts ...ParserOption) parser.Extension {
+	return &parserExtension{parserOpts: opts}
 }
 
-// New returns a new extension with given options.
-func New(opts ...Option) goldmark.Extender {
-	return &emoji{
-		options: opts,
+// ParserOptions implements parser.Extension.
+func (e *parserExtension) ParserOptions(_ *parser.Config) []parser.Option {
+	return []parser.Option{
+		parser.WithInlineParsers(
+			util.Prioritized(newInlineParser(e.parserOpts...), 999),
+		),
 	}
 }
 
-// Extend implements goldmark.Extender.
-func (e *emoji) Extend(m goldmark.Markdown) {
-	pOpts := []ParserOption{}
-	rOpts := []RendererOption{}
-	for _, o := range e.options {
-		if po, ok := o.(ParserOption); ok {
-			pOpts = append(pOpts, po)
-			continue
-		}
-		if ro, ok := o.(RendererOption); ok {
-			rOpts = append(rOpts, ro)
-		}
-	}
+// Parser is the default parser.Extension for emojis (using Github emoji set).
+var Parser parser.Extension = NewParser()
 
-	m.Renderer().AddOptions(renderer.WithNodeRenderers(
-		util.Prioritized(NewHTMLRenderer(rOpts...), 200),
-	))
-
-	m.Parser().AddOptions(parser.WithInlineParsers(
-		util.Prioritized(NewParser(pOpts...), 999),
-	))
-
-}
+// HTMLRenderer is the default html.Extension for emojis (Entity rendering method).
+var HTMLRenderer html.Extension = NewHTMLRenderer()
