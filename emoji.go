@@ -307,7 +307,11 @@ func (e *parserExtension) ParserOptions(_ *parser.Config) []parser.Option {
 }
 
 // Parser is the default parser.Extension for emojis (using Github emoji set).
+//
+// Deprecated: Use [NewParser] instead.
 var Parser parser.Extension = NewParser()
 
 // HTMLRenderer is the default html.Extension for emojis (Entity rendering method).
+//
+// Deprecated: Use [NewHTMLRenderer] instead.
 var HTMLRenderer html.Extension = NewHTMLRenderer()

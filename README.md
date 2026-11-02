@@ -33,8 +33,8 @@ import (
 )
 
 func main() {
-    p := parser.New(parser.WithExtensions(emoji.Parser))
-    r := html.New(html.WithExtensions(emoji.HTMLRenderer))
+    p := parser.New(parser.WithExtensions(emoji.NewParser()))
+    r := html.New(html.WithExtensions(emoji.NewHTMLRenderer()))
     source := []byte(`Joy :joy:`)
     doc := p.Parse(source)
     var buf bytes.Buffer
